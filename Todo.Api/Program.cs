@@ -50,6 +50,11 @@ app.MapPost("/Todos", async (ToDoDbContext dbContext, ToDo toDo) =>
 // Map endpoint to update ToDo
 app.MapPut("/Todos/{id}", async (ToDoDbContext dbContext, int id, ToDo toDo) =>
 {
+    if (await dbContext.ToDos.FindAsync(id) == null)
+    {
+        return Results.NotFound();
+    }
+
     toDo.Id = id;
     dbContext.ToDos.Update(toDo);
 
