@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.ComponentModel.DataAnnotations;
 
 WebApplicationBuilder? builder = WebApplication.CreateBuilder(args);
 
@@ -36,6 +38,19 @@ app.MapGet("/Todos/{id}", async (ToDoDbContext dbContext, int id) =>
     }
 
     return Results.Ok(toDo);
+});
+
+// Map endpoint to search ToDo by Title
+app.MapGet("/Todos/Search", async (ToDoDbContext dbContext, string title) =>
+{
+    // Introduce a vulnerability for SQL Injection 
+    // Ex: title = ';DROP TABLE dbo.ToDos;--
+
+    List<ToDo>? results = await dbContext.ToDos
+        .FromSqlRaw("SELECT * FROM dbo.ToDos WHERE Title = '" + title + "'")
+        .ToListAsync();
+
+    return Results.Ok(results);
 });
 
 // Map endpoint to create ToDo
