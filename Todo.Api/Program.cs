@@ -1,10 +1,11 @@
 using Microsoft.EntityFrameworkCore;
+using Todo.Api.Models;
 
 namespace Todo.Api;
 
 public class Program
 {
-    public async static Task Main(string[] args)
+    public static async Task Main(string[] args)
     {
         WebApplicationBuilder? builder = WebApplication.CreateBuilder(args);
 
@@ -96,30 +97,5 @@ public class Program
         });
 
         await app.RunAsync();
-    }
-}
-
-// Create ToDo class
-public class ToDo
-{
-    public int Id { get; set; }
-
-    public string Title { get; set; }
-
-    public bool IsDone { get; set; }
-
-    public DateTime CreatedDateTime { get; set; }
-
-    public DateTime? CompletedDateTime { get; set; }
-}
-
-// Create ToDoDbContext with Entity Framework
-public class ToDoDbContext : DbContext
-{
-    public DbSet<ToDo> ToDos { get; set; }
-
-    public ToDoDbContext(DbContextOptions<ToDoDbContext> options)
-        : base(options)
-    {
     }
 }
