@@ -1,104 +1,109 @@
+using Microsoft.AspNetCore.Builder;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using Todo.Api.Models;
 
-WebApplicationBuilder? builder = WebApplication.CreateBuilder(args);
-
-// ConfigureServices
-builder.Services.AddDbContext<ToDoDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
-
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
-
-WebApplication app = builder.Build();
-
-// Configure the HTTP request pipeline.
-if (app.Environment.IsDevelopment())
+namespace Todo.Api
 {
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-
-app.UseHttpsRedirection();
-
-// Map endpoint to get ToDos
-app.MapGet("/Todos", async (ToDoDbContext dbContext) =>
-{
-    return Results.Ok(await dbContext.ToDos.ToListAsync());
-});
-
-// Map endpoint to get ToDo by id
-app.MapGet("/Todos/{id}", async (ToDoDbContext dbContext, int id) =>
-{
-    ToDo? toDo = await dbContext.ToDos.FindAsync(id);
-    if (toDo is null)
+    public class Program
     {
-        return Results.NotFound();
-    }
+        public static async Task Main(string[] args)
+        {
+            WebApplicationBuilder? builder = WebApplication.CreateBuilder(args);
 
-    return Results.Ok(toDo);
-});
+            // ConfigureServices
+            builder.Services.AddDbContext<ToDoDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
-// Map endpoint to create ToDo
-app.MapPost("/Todos", async (ToDoDbContext dbContext, ToDo toDo) =>
-{
-    await dbContext.ToDos.AddAsync(toDo);
-    await dbContext.SaveChangesAsync();
+            builder.Services.AddEndpointsApiExplorer();
+            builder.Services.AddSwaggerGen();
 
-    return Results.Created($"/Todos/{toDo.Id}", toDo);
-});
+            WebApplication app = builder.Build();
 
-// Map endpoint to update ToDo
-app.MapPut("/Todos/{id}", async (ToDoDbContext dbContext, int id, ToDo toDo) =>
-{
-    if (await dbContext.ToDos.FindAsync(id) == null)
-    {
-        return Results.NotFound();
-    }
+            // Configure the HTTP request pipeline.
+            if (app.Environment.IsDevelopment())
+            {
+                app.UseSwagger();
+                app.UseSwaggerUI();
+            }
 
-    toDo.Id = id;
-    dbContext.ToDos.Update(toDo);
+            app.UseHttpsRedirection();
 
-    return Results.NoContent();
-});
+            // Map endpoint to get ToDos
+            app.MapGet("/Todos", async (ToDoDbContext dbContext) =>
+            {
+                return Results.Ok(await dbContext.ToDos.ToListAsync());
+            });
 
-// Map endpoint to delete ToDo
-app.MapDelete("/Todos/{id}", async (ToDoDbContext dbContext, int id) =>
-{
-    ToDo? toDo = await dbContext.ToDos.FindAsync(id);
-    if (toDo is null)
-    {
-        return Results.NotFound();
-    }
+            // Map endpoint to get ToDo by id
+            app.MapGet("/Todos/{id}", async (ToDoDbContext dbContext, int id) =>
+            {
+                ToDo? toDo = await dbContext.ToDos.FindAsync(id);
+                if (toDo is null)
+                {
+                    return Results.NotFound();
+                }
 
-    dbContext.ToDos.Remove(toDo);
-    await dbContext.SaveChangesAsync();
+                return Results.Ok(toDo);
+            });
 
-    return Results.NoContent();
-});
+            // Map endpoint to search ToDo by Title
+            app.MapGet("/Todos/Search", async (ToDoDbContext dbContext, string title) =>
+            {
+                // Introduce a vulnerability for SQL Injection 
+                // Ex: title = ';DROP TABLE dbo.ToDos;--
 
-await app.RunAsync();
+                List<ToDo>? results = await dbContext.ToDos
+                    .FromSqlRaw("SELECT * FROM dbo.ToDos WHERE Title = '" + title + "'")
+                    .ToListAsync();
 
-// Create ToDo class
-public class ToDo
-{
-    public int Id { get; set; }
+                return Results.Ok(results);
+            });
 
-    public string Title { get; set; }
+            // Map endpoint to create ToDo
+            app.MapPost("/Todos", async (ToDoDbContext dbContext, ToDo toDo) =>
+            {
+                await dbContext.ToDos.AddAsync(toDo);
+                await dbContext.SaveChangesAsync();
 
-    public bool IsDone { get; set; }
+                return Results.Created($"/Todos/{toDo.Id}", toDo);
+            });
 
-    public DateTime CreatedDateTime { get; set; }
+            // Map endpoint to update ToDo
+            app.MapPut("/Todos/{id}", async (ToDoDbContext dbContext, int id, ToDo toDo) =>
+            {
+                if (await dbContext.ToDos.FindAsync(id) == null)
+                {
+                    return Results.NotFound();
+                }
 
-    public DateTime? CompletedDateTime { get; set; }
-}
+                toDo.Id = id;
+                dbContext.ToDos.Update(toDo);
 
-// Create ToDoDbContext with Entity Framework
-public class ToDoDbContext : DbContext
-{
-    public DbSet<ToDo> ToDos { get; set; }
+                return Results.NoContent();
+            });
 
-    public ToDoDbContext(DbContextOptions<ToDoDbContext> options)
-        : base(options)
-    {
+            // Map endpoint to delete ToDo
+            app.MapDelete("/Todos/{id}", async (ToDoDbContext dbContext, int id) =>
+            {
+                ToDo? toDo = await dbContext.ToDos.FindAsync(id);
+                if (toDo is null)
+                {
+                    return Results.NotFound();
+                }
+
+                dbContext.ToDos.Remove(toDo);
+                await dbContext.SaveChangesAsync();
+
+                return Results.NoContent();
+            });
+
+            await app.RunAsync();
+        }
     }
 }
