@@ -1,4 +1,6 @@
-﻿namespace Todo.Api.Models
+﻿using System;
+
+namespace Todo.Api.Models
 {
     // Create ToDo class
     public class ToDo
